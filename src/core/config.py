@@ -1,1 +1,1 @@
-ROOT_DIR = "/media/stockage/Projets/MIT/L3/AXQL/axql_data"
+ROOT_DIR = "/media/stockage/Projets/MIT/L3/AXQL/examples"

@@ -1,1 +1,0 @@
-{"users": {"name": {"type": "str", "max_size": 200}, "id": {"type": "str", "max_size": 200}, "photourl": {"type": "str", "max_size": 300}}}
