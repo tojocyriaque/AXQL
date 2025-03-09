@@ -7,6 +7,12 @@ from core.query import AXQL
 import readline, os, atexit
 from config import HISTORY_FILE
 
+from prompt_toolkit import prompt
+from prompt_toolkit.lexers import PygmentsLexer
+from pygments.lexers.python import PythonLexer
+
+from cli.styles import HIGHLIGHT_STYLE
+
 def load_history():
     if os.path.exists(HISTORY_FILE):
         readline.read_history_file(HISTORY_FILE)
@@ -30,11 +36,11 @@ def launch_shell():
                 command_prefix = "axql.current_db"
                 
                 if axql.current_db.cli_table:
-                    prefix += f">\033[36m{axql.current_db.cli_table}"
+                    prefix += f">{axql.current_db.cli_table}"
                     command_prefix = "axql.current_db.tables[axql.current_db.cli_table]"
             
             if command != "exit":
-                command = input(f"\033[33m{prefix} \033[31m#~> \033[0m").strip()
+                command = prompt(f"{prefix} #~> ", lexer=PygmentsLexer(PythonLexer), style=HIGHLIGHT_STYLE).strip()
             
             match command.lower():
                 # alter table things
