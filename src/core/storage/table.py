@@ -1,3 +1,4 @@
+import struct
 from core.config import ROOT_DIR
 from core.exceptions import TableAttributeExistsException, TableAttributeNotFoundException
 from core.entities.table import TableAttribute
@@ -57,3 +58,82 @@ class Table:
             name:attr.properties()
             for name,attr in self.attributes.items()
         }
+    
+    
+    # Record handling
+    def insert_values(self, **kwargs):
+        """
+        Writing record following the structure of the table in order
+        """
+        record_bytes = b""
+        for attr in self.attributes:
+            if attr not in kwargs:
+                default_value = self.attributes[attr].default
+                if default_value is not None:
+                    kwargs[attr] = default_value
+                else:
+                    raise Exception(f"Missing attribute {attr} !!")
+                
+            if attr not in self.attributes:
+                raise Exception(f"Table {self.tablename} has no attribute {attr} !!")
+
+            dtype = self.attributes[attr].dtype
+            value = kwargs[attr]
+            match dtype:
+                case "int":
+                    packed = struct.pack("<B I", 1, value)  # Type 1 = int
+
+                case "float":
+                    packed = struct.pack("<B f", 2, value)  # Type 2 = float
+
+                case "str":
+                    value = value.encode("utf-8")
+                    packed = struct.pack(f"<B I {len(value)}s ", 3, len(value), value)  # Type 3 = str
+
+                case _:
+                    pass
+
+            record_bytes += packed
+        
+        with open(self.filepath, "ab") as tablefile:
+            tablefile.write(record_bytes)
+
+    # Reading records
+    def select(self, where=("*")):
+        matched = False
+        if "*" in where:
+            matched = True
+
+        with open(self.filepath, "rb") as tablefile:
+            while True:
+                record = {}
+                for attr in self.attributes:
+                    dtype_code_bytes = tablefile.read(1)
+                    
+                    if not dtype_code_bytes: # end of file
+                        return
+                
+                    dtype_code = struct.unpack("<B", dtype_code_bytes)[0]
+                    match dtype_code:
+                        case 1: # int
+                            data = tablefile.read(4) # int size is 4
+                            value = struct.unpack("<I", data)[0]
+
+                        case 2: # float
+                            data = tablefile.read(4) # float size is 4
+                            value = struct.unpack("<f", data)[0]
+
+                        case 3: # str
+                            strlen_bytes = tablefile.read(4)
+                            strlen = struct.unpack("<I", strlen_bytes)[0]
+
+                            data = tablefile.read(strlen)
+                            value = struct.unpack(f"<{strlen}s", data)[0].decode("utf-8")
+
+                        case _:
+                            pass
+                    
+                    
+                    record[attr] = value
+
+                print(record)

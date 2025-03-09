@@ -19,9 +19,8 @@ class DataBase:
         self.metadata:dict[str, dict[str, dict]] = {}
         self.metadata_file = None
 
-        # for alter table
-        self.alteration_table = None
-        self.alter_action = None
+        # using table
+        self.cli_table = None
 
         self.load_metadata()
         self.load_tables()
@@ -83,7 +82,7 @@ class DataBase:
         self.update_metadata_file() # updating the metadata.json file
 
     def drop_table(self, tablename:str):
-        table_filepath = f"{self.dbpath}/{tablename}.tabl"
+        table_filepath = f"{self.dbpath}/{tablename}.tbl"
         try:
             # remove the table name in the db table_keys
             self.tables.pop(tablename)
@@ -96,14 +95,20 @@ class DataBase:
             # table does not exists
             raise TableNotFoundException(f"Table {tablename} does not exist!!")
 
-    def alter_table(self, tablename:str):
+    def select_table(self, tablename:str):
         if tablename not in self.tables.keys():
             raise TableNotFoundException(f"Table {tablename} does not exists !!")
+        
+        self.cli_table = tablename
 
-        self.alteration_table = tablename
-    
-    def end_alter(self):
-        self.update_table_metadata(self.alteration_table)
+    def quit_table(self):
+        self.cli_table = None
+
+    def cancel_alter(self):
+        print(f"\nCancel alteration of table {self.cli_table} !")
+        self.alter_table = None
+
+    def accept_alter(self):
+        self.update_table_metadata(self.cli_table)
         self.update_metadata_file()
-        print(f"\nAltered table {self.alteration_table} !")
-        self.alteration_table = None
+        print(f"\nAltered table {self.cli_table} !")

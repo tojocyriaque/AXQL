@@ -18,38 +18,57 @@ def launch_shell():
                 prefix = axql.current_db.dbname
                 command_prefix = "axql.current_db"
                 
-                if axql.current_db.alteration_table:
-                    prefix += f">\033[36m{axql.current_db.alteration_table}"
-                    command_prefix = "axql.current_db.tables[axql.current_db.alteration_table]"
+                if axql.current_db.cli_table:
+                    prefix += f">\033[36m{axql.current_db.cli_table}"
+                    command_prefix = "axql.current_db.tables[axql.current_db.cli_table]"
             
             if command != "exit":
                 command = input(f"\033[33m{prefix} \033[31m#~> \033[0m").strip()
             
-            if command.lower() == "exit":
-                if axql.current_db:
-                    if axql.current_db.alteration_table:
-                        axql.current_db.end_alter()
+            match command.lower():
+                # alter table things
+                case "cancel": # decline new table structure
+                    if axql.current_db.cli_table:
+                        axql.current_db.cancel_alter()
                     else:
+                        print("No table selected !!")
+
+                case "accept": # accept new table structure
+                    if axql.current_db.cli_table:
+                        axql.current_db.accept_alter()
+                    else:
+                        print("No table selected !!")
+
+                case "qt": # quit the current table
+                    if axql.current_db.cli_table:
+                        print(f"Quit table {axql.current_db.cli_table} !")
+                        axql.current_db.quit_table()
+                    else:
+                        print("No table selected !!")
+
+                # CLI things
+                case "exit":
+                    if axql.current_db:
                         print(f"\nQuit database {axql.current_db.dbname} !!")
                         axql.quit_current_db()
 
-                else:
-                    print("\nGoodbye :)")
-                    break
-                
-                command = ""
+                    else:
+                        print("\nGoodbye :)")
+                        break
+                    
+                    command = ""
 
-            elif command.lower() == "clear":
-                clear_screen()
-            
-            elif command == "":
-                pass
+                case "clear":
+                    clear_screen()
 
-            else:
-                try:
-                    eval(f"{command_prefix}.{command}")
-                except Exception as e:
-                    print(f"\n\033[31mError: {e}")
+                case "":
+                    pass
+
+                case _:
+                    try:
+                        eval(f"{command_prefix}.{command}")
+                    except Exception as e:
+                        print(f"\n\033[31mError: {e}")
         
         except (TypeError, ValueError, PermissionError) as e:
             print(f"\n\033[31mError: {type(e).__name__} - {e}")
