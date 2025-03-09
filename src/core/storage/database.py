@@ -1,8 +1,8 @@
-from collections import defaultdict
 import json, os
 from core.config import ROOT_DIR
-from core.exceptions import TableAttributeExistsException, TableAttributeNotFoundException, TableExistsException, TableNotFoundException
-from core.entities.table import TableAttribute
+from core.exceptions import TableExistsException, TableNotFoundException
+from core.storage.table import Table
+
 
 """
 Handling databases
@@ -48,7 +48,7 @@ class DataBase:
             attr_list =  [ (attr_name, *attribute.values())
                            for attr_name, attribute in attributes.items()]
             
-            self.tables[table_name] = Table(self, table_name, attr_list)
+            self.tables[table_name] = Table(self.dbname, table_name, attr_list)
             self.tables[table_name].setup(attr_list)
 
     # adding new table to the metadata
@@ -76,7 +76,7 @@ class DataBase:
         if tablename in self.metadata:
             raise TableExistsException(f"Table {tablename} exists !!")
 
-        self.tables[tablename] = Table(self, tablename, attributes)
+        self.tables[tablename] = Table(self.dbname, tablename, attributes)
         self.tables[tablename].create(attributes) # create the table
         
         self.add_table_metadata(tablename)
@@ -107,60 +107,3 @@ class DataBase:
         self.update_metadata_file()
         print(f"\nAltered table {self.alteration_table} !")
         self.alteration_table = None
-
-"""
-Handing tables
-"""
-class Table:
-    def __init__(self, database:DataBase, tablename:str, attributes=[]):
-        self.tablename = tablename
-        self.attributes:dict[str, TableAttribute] = {}
-        self.db = database
-        self.file = None
-        self.filepath = f"{ROOT_DIR}/{self.db.dbname}/{self.tablename}.tbl"
-
-    def create(self, attributes):
-        self.file = open(self.filepath, "a") # create the table file if it does not exist
-        self.setup(attributes)
-
-    def setup(self, attributes:list):
-        for attr in attributes:
-            attr_name, *props = attr
-            self.attributes[attr_name] = TableAttribute(*attr)
-
-        self.file = open(self.filepath, "r") # read the file
-
-    def add_attributes(self, *attributes):
-        self.db.alter_action
-        for attr in attributes:
-            attr_name, *props = attr
-
-            if attr_name in self.attributes.keys():
-                raise TableAttributeExistsException("Attribute exists !!")
-            
-            self.attributes[attr_name] = TableAttribute(*attr)
-
-    def remove_attribute(self, attr_name:str):
-        if attr_name not in self.attributes.keys():
-            raise TableAttributeNotFoundException(f"No attribute {attr_name} !!")
-        
-        self.attributes.pop(attr_name)
-    
-    def modify_attribute(self, attr_name:str, new_attr:tuple):
-        if attr_name not in self.attributes.keys():
-            raise TableAttributeNotFoundException(f"No attribute {attr_name} !!")
-        
-        new_name, *props = new_attr
-        # same attribute
-        if new_name == attr_name:
-            self.attributes[attr_name] = TableAttribute(*new_attr)
-        # different name (replace the attribute)
-        else:
-            self.remove_attribute(attr_name)
-            self.add_attributes(new_attr)
-
-    def description(self):
-        return {
-            name:attr.properties()
-            for name,attr in self.attributes.items()
-        }

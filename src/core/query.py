@@ -2,7 +2,7 @@ import os,shutil
 import genericpath as path
 from core.config import ROOT_DIR
 from core.exceptions import DatabaseExistsException, DatabaseNotFoundException
-from core.storage import DataBase
+from core.storage.database import DataBase
 
 
 class AXQL:
@@ -25,6 +25,9 @@ class AXQL:
             self.current_db = DataBase(dbname)
         else:
             raise DatabaseNotFoundException(f"Database {dbname} does not exists")
+
+    def quit_current_db(self):
+        self.current_db = None
 
     def drop_database(self, dbname:str):
         # Drop the files

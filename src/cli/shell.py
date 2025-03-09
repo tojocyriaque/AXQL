@@ -1,75 +1,66 @@
-from core.exceptions import DatabaseExistsException, DatabaseNotFoundException, TableExistsException, TableNotFoundException
+from core.exceptions import (
+    DatabaseExistsException, DatabaseNotFoundException, 
+    TableExistsException, TableNotFoundException
+)
 from core.query import AXQL
 
+def clear_screen():
+    print("\033c", end="")
 
 def launch_shell():
     axql = AXQL()
     command = ""
+    
     while True:
         try:
-            command_prefix = "axql"
-            prefix = "axql"
-            if axql.current_db != None:
-                command_prefix = "axql.current_db"
+            command_prefix = prefix = "axql"
+            if axql.current_db:
                 prefix = axql.current_db.dbname
-
-                if axql.current_db.alteration_table != None:
-                    alteration_table_text = "axql.current_db.alteration_table"
-                    command_prefix = f"axql.current_db.tables[{alteration_table_text}]"
-                    prefix = f"{prefix}>{axql.current_db.alteration_table}"
-
+                command_prefix = "axql.current_db"
+                
+                if axql.current_db.alteration_table:
+                    prefix += f">\033[36m{axql.current_db.alteration_table}"
+                    command_prefix = "axql.current_db.tables[axql.current_db.alteration_table]"
+            
             if command != "exit":
-                command = input(f"{prefix} -> ")
-    
-            if command == "exit":
-                command = ""
-                if axql.current_db==None:
-                    print("\n\nGood bye :)")
-                    break
-
-                elif axql.current_db.alteration_table!=None:
-                    axql.current_db.end_alter()
+                command = input(f"\033[33m{prefix} \033[31m#~> \033[0m").strip()
+            
+            if command.lower() == "exit":
+                if axql.current_db:
+                    if axql.current_db.alteration_table:
+                        axql.current_db.end_alter()
+                    else:
+                        print(f"\nQuit database {axql.current_db.dbname} !!")
+                        axql.quit_current_db()
 
                 else:
-                    print(f"\nQuit database {axql.current_db.dbname} !!")
-                    axql.current_db=None
+                    print("\nGoodbye :)")
+                    break
+                
+                command = ""
+
+            elif command.lower() == "clear":
+                clear_screen()
+            
+            elif command == "":
+                pass
 
             else:
-                eval(f"{command_prefix}.{command}")
-
-        # except SyntaxError:
-        #     print(f"\nError: Syntax error")
-
-        except TypeError:
-            print(f"\nError: Type error !!")
+                try:
+                    eval(f"{command_prefix}.{command}")
+                except Exception as e:
+                    print(f"\n\033[31mError: {e}")
         
-        except ValueError:
-            print(f"\nError: Values error !!")
-
-        except PermissionError:
-            print(f"\nError: Permission denied")
-
-        except DatabaseNotFoundException:
-            print(f"\nError: database not found!!")
+        except (TypeError, ValueError, PermissionError) as e:
+            print(f"\n\033[31mError: {type(e).__name__} - {e}")
         
-        except DatabaseExistsException:
-            print(f"\nError: database already exists!!")
-
-        except TableNotFoundException:
-            print(f"\nError: table does not exists!!")
+        except (DatabaseNotFoundException, DatabaseExistsException, 
+                TableNotFoundException, TableExistsException) as e:
+            print(f"\n\033[31mError: {e}")
         
-        except TableExistsException:
-            print(f"\nError: table already exists!!")
-
-        # except AttributeError:
-        #     print(f"\nError: invalid function!!")
-
-
-        # Exit with Ctrl + D
         except EOFError:
-            command ="exit"
-
-        # Interrupt with Ctrl + C
+            command = "exit"
+        
         except KeyboardInterrupt:
             print("\nError: shell interrupted!!")
             break
