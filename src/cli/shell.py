@@ -4,6 +4,17 @@ from core.exceptions import (
 )
 from core.query import AXQL
 
+import readline, os, atexit
+from config import HISTORY_FILE
+
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        readline.read_history_file(HISTORY_FILE)
+
+def save_history():
+    readline.write_history_file(HISTORY_FILE)
+
+
 def clear_screen():
     print("\033c", end="")
 
@@ -85,4 +96,9 @@ def launch_shell():
             break
 
 if __name__ == "__main__":
+    readline.parse_and_bind("tab: complete")
+    readline.parse_and_bind("set editing-mode vi")
+    atexit.register(save_history)
+    load_history()
     launch_shell()
+    
