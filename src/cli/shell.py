@@ -7,11 +7,13 @@ from core.query import AXQL
 import readline, os, atexit
 from config import HISTORY_FILE
 
-from prompt_toolkit import prompt
+from prompt_toolkit import HTML, prompt
 from prompt_toolkit.lexers import PygmentsLexer
+from prompt_toolkit.history import FileHistory
 from pygments.lexers.python import PythonLexer
 
 from cli.styles import HIGHLIGHT_STYLE
+from cli.completions import axql_completer
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -36,11 +38,20 @@ def launch_shell():
                 command_prefix = "axql.current_db"
                 
                 if axql.current_db.cli_table:
-                    prefix += f">{axql.current_db.cli_table}"
+                    prefix += f"><ansiblue>{axql.current_db.cli_table}</ansiblue>"
                     command_prefix = "axql.current_db.tables[axql.current_db.cli_table]"
             
             if command != "exit":
-                command = prompt(f"{prefix} #~> ", lexer=PygmentsLexer(PythonLexer), style=HIGHLIGHT_STYLE).strip()
+                command = prompt(
+                                HTML(f"<ansibold><ansimagenta>{prefix}</ansimagenta> <ansiblue>#~></ansiblue></ansibold> "),
+                                 enable_history_search=True,
+                                 enable_system_prompt=True,
+                                 lexer=PygmentsLexer(PythonLexer),
+                                 history=FileHistory(HISTORY_FILE),
+                                 completer=axql_completer,
+                                 style=HIGHLIGHT_STYLE).strip()
+                
+                readline.add_history(command)
             
             match command.lower():
                 # alter table things
@@ -56,6 +67,10 @@ def launch_shell():
                     else:
                         print("No table selected !!")
 
+                case "describe":
+                    if axql.current_db != None:
+                        eval(f"{command_prefix}.describe()")
+                    
                 case "qt": # quit the current table
                     if axql.current_db.cli_table:
                         print(f"Quit table {axql.current_db.cli_table} !")
@@ -104,7 +119,6 @@ def launch_shell():
 if __name__ == "__main__":
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set editing-mode vi")
-    atexit.register(save_history)
     load_history()
     launch_shell()
     
