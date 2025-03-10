@@ -1,6 +1,6 @@
 import os,shutil
 import genericpath as path
-from core.config import ROOT_DIR
+from config import ROOT_DIR
 from core.exceptions import DatabaseExistsException, DatabaseNotFoundException
 from core.storage.database import DataBase
 
