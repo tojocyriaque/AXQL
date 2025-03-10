@@ -4,6 +4,9 @@ from core.exceptions import TableAttributeExistsException, TableAttributeNotFoun
 from core.entities.table import TableAttribute
 import re
 
+from core.storage.helpers import table_view
+
+import os
 def verify(value, conditions:list, all=False):
     for condition in conditions:
         v_type = type(condition)
@@ -41,76 +44,16 @@ class Table:
 
     # CLI things
     def describe(self):
-        """
-        Prints a nicely formatted description of the table's schema.
-        """
-        RESET = "\033[0m"
-        BOLD = "\033[1m"
-        CYAN = "\033[36m"
-        YELLOW = "\033[33m"
-        MAGENTA = "\033[35m"
-        GREEN = "\033[32m"
-
-        # Helper function to strip ANSI escape sequences.
-        ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-        def strip_ansi(text):
-            return ansi_escape.sub('', text)
-
-        # Define the header labels
         headers = ["Column", "Type", "Min Size", "Max Size", "Default", "Constraint"]
-        headers = [f"{BOLD}{YELLOW}{header}{RESET}" for header in headers]
-        # Build rows from each attribute
-        rows = []
-        for attr_name, attr in self.attributes.items():
-            rows.append([
-                f"{GREEN}{attr_name}{RESET}",
+        rows = [[attr_name,
                 attr.dtype,
                 str(attr.min_size),
                 str(attr.max_size),
                 str(attr.default) if attr.default is not None else "",
                 str(attr.constraint) if attr.constraint is not None else ""
-            ])
-        
-        # Compute column widths based on header and row values
-        col_widths = []
-        for i, header in enumerate(headers):
-            max_width = len(strip_ansi(header))
-            for row in rows:
-                cell_len = len(strip_ansi(row[i]))
-                if cell_len > max_width:
-                    max_width = cell_len
-            col_widths.append(max_width)
-        
-        # Build border lines using Unicode box-drawing characters
-        top_line = "┌" + "┬".join("─" * (w + 2) for w in col_widths) + "┐"
-        sep_line = "├" + "┼".join("─" * (w + 2) for w in col_widths) + "┤"
-        bottom_line = "└" + "┴".join("─" * (w + 2) for w in col_widths) + "┘"
-        
-        # Print a header for the table description
-        print(f"\nTable: {self.tablename}\n")
-        print(top_line)
-        
-        # Print header row
-        header_cells = []
-        for i, cell in enumerate(headers):
-            visible = strip_ansi(cell)
-            pad = col_widths[i] - len(visible)
-            header_cells.append(cell + " " * pad)
-        header_row = "│ " + " │ ".join(header_cells) + " │"
-        print(header_row)
-        print(sep_line)
-        
-        # Print each row
-        for row in rows:
-            row_cells = []
-            for i, cell in enumerate(row):
-                visible = strip_ansi(cell)
-                pad = col_widths[i] - len(visible)
-                row_cells.append(cell + " " * pad)
-            row_line = "│ " + " │ ".join(row_cells) + " │"
-            print(row_line)
-            
-        print(bottom_line)
+                ] for attr_name, attr in self.attributes.items()]
+        table_view(headers, rows, higlight_first_col=True)
+  
     
     def create(self, attributes):
         self.file = open(self.filepath, "a") # create the table file if it does not exist
@@ -199,6 +142,12 @@ class Table:
     # Reading records
     def select(self, **where):
         records = []
+        def show_results():
+            headers = list(self.attributes.keys())
+            rows = [list(record.values()) 
+                    for record in records]
+            table_view(headers, rows)
+            
         with open(self.filepath, "rb") as tablefile:
             while True:
                 record = {}
@@ -207,7 +156,8 @@ class Table:
                     dtype_code_bytes = tablefile.read(1)
                     
                     if not dtype_code_bytes: # end of file
-                        return
+                        show_results()
+                        return records
                 
                     dtype_code = struct.unpack("<B", dtype_code_bytes)[0]
                     match dtype_code:
@@ -256,7 +206,4 @@ class Table:
                     
 
                 if match_conditions:
-                    print(record)
                     records.append(record)
-
-        return records

@@ -2,13 +2,15 @@ import json, os
 from config import ROOT_DIR
 from core.exceptions import TableExistsException, TableNotFoundException
 from core.storage.table import Table
+from core.storage.helpers import table_view
 
 
 """
 Handling databases
 """
 class DataBase:
-    def __init__(self, dbname:str):
+    def __init__(self, dbname:str, owner:str="axql_admin"):
+        self.owner = owner
         self.dbname = dbname
         self.dbpath = f"{ROOT_DIR}/{dbname}"
 
@@ -115,88 +117,12 @@ class DataBase:
 
 
     def describe(self):
-        """
-        Prints a colorful description of the database,
-        listing each table and a summary of its columns,
-        with proper padding despite ANSI escape codes.
-        """
-        import re
-        # Helper function to strip ANSI escape sequences.
-        ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-        def strip_ansi(text):
-            return ansi_escape.sub('', text)
-
-        # ANSI escape codes for colors and styles
-        RESET = "\033[0m"
-        BOLD = "\033[1m"
-        CYAN = "\033[36m"
-        YELLOW = "\033[33m"
-        MAGENTA = "\033[35m"
-        GREEN = "\033[32m"
-        
-        # Build the header for the database
-        header_text = f" Database: {self.dbname} "
-        header = f"{BOLD}{CYAN}{header_text}{RESET}"
-        visible_header = strip_ansi(header)
-        border = "─" * len(visible_header)
-        print(f"┌{border}┐")
-        print(f"│{header}│")
-        print(f"└{border}┘\n")
-        
-        # If no tables exist, notify the user.
-        if not self.tables:
-            print(f"{MAGENTA}No tables found in this database.{RESET}")
-            return
-
         # Define headers for the overview table
-        overview_headers = [f"{BOLD}{YELLOW}Table{RESET}", 
-                            f"{BOLD}{YELLOW}Columns{RESET}", 
-                            f"{BOLD}{YELLOW}Description{RESET}"]
+        headers = ["Table", "Columns", "Description"]
         rows = []
-
-        # Create a row for each table
         for table_name, table in self.tables.items():
-            # List columns as a comma-separated string
             columns = ", ".join(table.attributes.keys())
-            # Create a description: for each column, show "column:type"
             description = ", ".join(f"{col}:{table.attributes[col].dtype}" for col in table.attributes)
-            rows.append([f"{GREEN}{table_name}{RESET}", columns, description])
+            rows.append([table_name, columns, description])
         
-        # Compute column widths based on visible lengths (ignoring ANSI codes)
-        col_widths = []
-        for i in range(len(overview_headers)):
-            max_width = len(strip_ansi(overview_headers[i]))
-            for row in rows:
-                cell_len = len(strip_ansi(row[i]))
-                if cell_len > max_width:
-                    max_width = cell_len
-            col_widths.append(max_width)
-        
-        # Build border lines using Unicode box-drawing characters
-        top_line = "┌" + "┬".join("─" * (w + 2) for w in col_widths) + "┐"
-        sep_line = "├" + "┼".join("─" * (w + 2) for w in col_widths) + "┤"
-        bottom_line = "└" + "┴".join("─" * (w + 2) for w in col_widths) + "┘"
-        
-        # Build the header row with proper padding
-        header_cells = []
-        for i, cell in enumerate(overview_headers):
-            visible = strip_ansi(cell)
-            pad = col_widths[i] - len(visible)
-            header_cells.append(cell + " " * pad)
-        header_row = "│ " + " │ ".join(header_cells) + " │"
-        
-        # Print the overview table
-        print(top_line)
-        print(header_row)
-        print(sep_line)
-        
-        for row in rows:
-            row_cells = []
-            for i, cell in enumerate(row):
-                visible = strip_ansi(cell)
-                pad = col_widths[i] - len(visible)
-                row_cells.append(cell + " " * pad)
-            row_line = "│ " + " │ ".join(row_cells) + " │"
-            print(row_line)
-        
-        print(bottom_line)
+        table_view(headers=headers, rows=rows, higlight_first_col=True)

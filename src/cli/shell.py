@@ -4,7 +4,7 @@ from core.exceptions import (
 )
 from core.query import AXQL
 
-import readline, os, atexit
+import readline, os
 from config import HISTORY_FILE
 
 from prompt_toolkit import HTML, prompt
@@ -15,7 +15,7 @@ from pygments.lexers.python import PythonLexer
 from cli.styles import HIGHLIGHT_STYLE
 from cli.completions import axql_completer
 
-def load_history():
+def load_history(): 
     if os.path.exists(HISTORY_FILE):
         readline.read_history_file(HISTORY_FILE)
 
@@ -42,11 +42,12 @@ def launch_shell():
                     command_prefix = "axql.current_db.tables[axql.current_db.cli_table]"
             
             if command != "exit":
+                # syntax highlighted prompt
                 command = prompt(
-                                HTML(f"<ansibold><ansimagenta>{prefix}</ansimagenta> <ansiblue>#~></ansiblue></ansibold> "),
+                                HTML(f"<ansibold><ansimagenta>{prefix}</ansimagenta> <ansiyellow>#~></ansiyellow></ansibold> "),
                                  enable_history_search=True,
                                  enable_system_prompt=True,
-                                 lexer=PygmentsLexer(PythonLexer),
+                                 lexer=PygmentsLexer(PythonLexer), # use python syntax for highlightings
                                  history=FileHistory(HISTORY_FILE),
                                  completer=axql_completer,
                                  style=HIGHLIGHT_STYLE).strip()
@@ -98,7 +99,9 @@ def launch_shell():
 
                 case _:
                     try:
-                        eval(f"{command_prefix}.{command}")
+                        expression = command_prefix+"."+command
+                        safe_global = {"__builtins__":None,"axql":axql}
+                        result = eval(expression, safe_global, {})
                     except Exception as e:
                         print(f"\n\033[31mError: {e}")
         
