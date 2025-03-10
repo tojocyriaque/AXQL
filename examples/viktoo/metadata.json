@@ -1,0 +1,1 @@
+{"users": {"users_id": {"dtype": "str", "min_size": 50, "max_size": 70, "default": null, "constraint": 1}, "email": {"dtype": "str", "min_size": 10, "max_size": 20, "default": null, "constraint": null}, "tel": {"dtype": "int", "min_size": 10, "max_size": 10, "default": null, "constraint": null}}}

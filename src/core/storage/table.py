@@ -2,24 +2,40 @@ import struct
 from config import ROOT_DIR
 from core.exceptions import TableAttributeExistsException, TableAttributeNotFoundException
 from core.entities.table import TableAttribute
-import re
+import re, uuid
 
 from core.storage.helpers import table_view
 
 import os
+
 def verify(value, conditions:list, all=False):
+    v_type = type(value)
     for condition in conditions:
-        v_type = type(condition)
-        if v_type != str: # match if equal
-            to_ev = f'{value}=={condition}'
-            ev = eval(to_ev)
+        cond_type = type(condition)
+        
+        if cond_type != str: # match if equal
+            ev = (value == condition)
         elif type(value)==str: # value and condition are both str (this should be regex)
-            to_ev = f'"{value}"=="{condition}"'
-            ev = eval(to_ev)
+            ev = (value == condition)
 
         else: # condition is str and value is not
             # example value = 8 and condition = "<4"
-            ev = eval(f'{value}{condition}')
+            # Match operator (e.g., <, >, <=, >=, ==, !=) and number (integer or float)
+            valid_cond = re.match(r'^(<=|>=|<|>|!=)(-?\d+(\.\d+)?)$', condition)
+            if not valid_cond:
+                raise ValueError("Invalid condition format")
+            
+            op_str, int_str, float_str = valid_cond.groups()
+            num_str = str(int_str)
+            if float_str:
+                num_str += str(float_str)
+            
+            # Mapping of string operators to actual Python functions
+            import operator
+            ops = { '<': operator.lt, '>': operator.gt,
+                    '<=': operator.le, '>=': operator.ge,
+                    '!=': operator.ne}
+            ev = ops[op_str](value, v_type(num_str))
             
         if ev==True and all==False:
             return True
@@ -27,7 +43,7 @@ def verify(value, conditions:list, all=False):
         if ev==False and all==True:
             return False
 
-    return True
+    return ev
     
 
 
@@ -37,7 +53,13 @@ Handing tables
 class Table:
     def __init__(self, dbname:str, tablename:str, attributes=[]):
         self.tablename = tablename
-        self.attributes:dict[str, TableAttribute] = {}
+        
+        self.primary_key = TableAttribute(f"{self.tablename}_id", "str", 70, 50, 1, str(uuid.uuid4()))
+        
+        self.attributes:dict[str, TableAttribute] = {
+            self.primary_key.name:self.primary_key
+        }
+        
         self.dbname = dbname
         self.file = None
         self.filepath = f"{ROOT_DIR}/{self.dbname}/{self.tablename}.tbl"
@@ -103,6 +125,8 @@ class Table:
     
     # Record handling
     def insert_values(self, **kwargs):
+        kwargs[self.primary_key.name] = str(uuid.uuid4()) # primary key index generated automatically
+        
         """
         Writing record following the structure of the table in order
         """

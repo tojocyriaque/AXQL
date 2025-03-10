@@ -1,3 +1,5 @@
+import uuid
+
 class TableAttribute:
     def __init__(self, name:str, dtype:str, max_size:int, min_size:int=0, constraint=None, default=None):
         self.name = name
