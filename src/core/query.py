@@ -1,4 +1,4 @@
-import os,shutil
+import os, shutil
 import genericpath as path
 from config import ROOT_DIR
 from core.exceptions import DatabaseExistsException, DatabaseNotFoundException
@@ -6,10 +6,10 @@ from core.storage.database import DataBase
 
 
 class AXQL:
-    def __init__(self, dbname:str=None):
-        self.current_db: DataBase = DataBase(dbname) if dbname != None else None
+    def __init__(self, dbname=None):
+        self.current_db = DataBase(dbname) if dbname is not None else None
 
-    def create_database(self, dbname:str):
+    def create_database(self, dbname: str):
         dbpath = f"{ROOT_DIR}/{dbname}"
 
         if path.exists(dbpath):
@@ -18,8 +18,8 @@ class AXQL:
         else:
             os.mkdir(dbpath)
             open(f"{dbpath}/metadata.json", "a")
-            
-    def use_database(self, dbname:str):
+
+    def use_database(self, dbname: str):
         dbpath = f"{ROOT_DIR}/{dbname}"
         if path.exists(dbpath):
             self.current_db = DataBase(dbname)
@@ -29,7 +29,7 @@ class AXQL:
     def quit_current_db(self):
         self.current_db = None
 
-    def drop_database(self, dbname:str):
+    def drop_database(self, dbname: str):
         # Drop the files
         dbpath = f"{ROOT_DIR}/{dbname}"
 
