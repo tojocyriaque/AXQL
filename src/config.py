@@ -3,5 +3,5 @@ This file will contain some constants
 """
 import os
 
-ROOT_DIR = "/media/stockage/Projets/MIT/L3/AXQL/examples"
+ROOT_DIR = "/home/tojo/Projets/AXQL/examples/"
 HISTORY_FILE = os.path.expanduser("~/.sgbdr_history")
