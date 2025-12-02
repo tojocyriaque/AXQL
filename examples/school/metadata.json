@@ -1,0 +1,1 @@
+{"profs": {"name": {"dtype": "str", "min_size": 0, "max_size": 50, "default": null, "constraint": null}, "id": {"dtype": "int", "min_size": 0, "max_size": 1000000, "default": null, "constraint": null}}}

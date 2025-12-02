@@ -1,8 +1,9 @@
-import json, os
+import json
+import os
+
 from config import ROOT_DIR
 from core.exceptions import TableExistsException, TableNotFoundException
 from core.storage.table import Table
-
 
 """
 Handling databases
@@ -16,7 +17,7 @@ class DataBase:
 
         self.metadata_path = f"{self.dbpath}/metadata.json"
 
-        self.tables: dict[str:Table] = {}
+        self.tables: dict[str, Table] = {}
 
         self.metadata: dict[str, dict[str, dict]] = {}
         self.metadata_file = None
