@@ -1,4 +1,5 @@
-import os, shutil
+import os
+import shutil
 import genericpath as path
 from config import ROOT_DIR
 from core.exceptions import DatabaseExistsException, DatabaseNotFoundException

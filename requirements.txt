@@ -1,1 +1,3 @@
-
+atexit
+readline
+struct

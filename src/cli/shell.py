@@ -6,7 +6,9 @@ from core.exceptions import (
 )
 from core.query import AXQL
 
-import readline, os, atexit
+import readline
+import os
+import atexit
 from config import HISTORY_FILE
 
 

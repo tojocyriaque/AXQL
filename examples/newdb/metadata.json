@@ -1,1 +1,1 @@
-{"tb1": {"name": {"dtype": "str", "min_size": 20, "max_size": 12, "default": "Tojo", "constraint": null}}}
+{"tb1": {"name": {"dtype": "str", "min_size": 20, "max_size": 12, "default": "not null", "constraint": "Tojo"}, "height": {"dtype": "float", "min_size": 100.0, "max_size": 60.0, "default": "not null", "constraint": 70.24}}}

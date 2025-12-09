@@ -47,13 +47,8 @@ class DataBase:
     # load tables from the metadata
     def load_tables(self):
         for table_name, attributes in self.metadata.items():
-            attr_list = [
-                (attr_name, *attribute.values())
-                for attr_name, attribute in attributes.items()
-            ]
-
-            self.tables[table_name] = Table(self.dbname, table_name, attr_list)
-            self.tables[table_name].setup(attr_list)
+            self.tables[table_name] = Table(self.dbname, table_name)
+            self.tables[table_name].setup_attributes(attributes)
 
     # adding new table to the metadata
     def add_table_metadata(self, tablename: str):
@@ -79,7 +74,7 @@ class DataBase:
         if tablename in self.metadata:
             raise TableExistsException(f"Table {tablename} exists !!")
 
-        self.tables[tablename] = Table(self.dbname, tablename, attributes)
+        self.tables[tablename] = Table(self.dbname, tablename)
         self.tables[tablename].create(attributes)  # create the table
 
         self.add_table_metadata(tablename)

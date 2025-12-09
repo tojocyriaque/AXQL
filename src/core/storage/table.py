@@ -9,14 +9,23 @@ import re
 import operator
 
 
+def match_constraint(value, attr: TableAttribute):
+    if isinstance(value, (int, float)):
+        return attr.min_size <= value <= attr.max_size
+    elif isinstance(value, str):
+        return attr.min_size <= len(value) <= attr.max_size
+    else:
+        raise Exception("Support for this data type is not implemented")
+
+
 def eval_math_cond(value, cond_str):
     OPS = {
         "==": operator.eq,
         "!=": operator.ne,
-        "<": operator.lt,
         "<=": operator.le,
-        ">": operator.gt,
         ">=": operator.ge,
+        ">": operator.gt,
+        "<": operator.lt,
     }
 
     for op_sym, op_func in OPS.items():
@@ -26,11 +35,16 @@ def eval_math_cond(value, cond_str):
     raise ValueError("Unsupported condition")
 
 
-def verify_conditions(value, conditions: list[str], all_match=False):
+# verify if the value match the conditions
+def verify_conditions(value, conditions: list[str | int], all_match=False):
     if isinstance(value, (int, float)):
         # Math conditions
         for cond in conditions:
-            math_eval = eval_math_cond(value, cond)
+            math_eval = (
+                (value == cond)
+                if isinstance(cond, (float, int))
+                else eval_math_cond(value, cond)
+            )
             if math_eval and not all_match:
                 return True  # one condition in the OR is verified
 
@@ -40,13 +54,15 @@ def verify_conditions(value, conditions: list[str], all_match=False):
     elif isinstance(value, str):
         meta = ".^$*+?{}[]|()"
         # Regex matching
-        for cond in conditions:
-            # escape simple string (which is not a regular expression at all)
-            regex_pattern = cond if any(c in cond for c in meta) else re.escape(cond)
-
+        for cond in [c for c in conditions if isinstance(c, str)]:
             # matching the pattern now
-            regex_match = re.fullmatch(regex_pattern, value) is not None
-            if regex_match is True and not all_match:
+            if any(c in meta for c in cond):  # regular expression
+                regex_match = re.match(cond, value) is not None
+            else:  # not a regular expression
+                # fullmatch required
+                regex_match = cond == value
+
+            if regex_match and not all_match:
                 return True  # one condition in the OR is verified
             elif not regex_match and all_match:
                 return False  # one condition in the AND is not verified
@@ -63,7 +79,7 @@ Handing tables
 
 
 class Table:
-    def __init__(self, dbname: str, tablename: str, attributes=[]):
+    def __init__(self, dbname: str, tablename: str):
         self.tablename = tablename
         self.attributes: dict[str, TableAttribute] = {}
         self.dbname = dbname
@@ -77,9 +93,7 @@ class Table:
         """
         RESET = "\033[0m"
         BOLD = "\033[1m"
-        CYAN = "\033[36m"
         YELLOW = "\033[33m"
-        MAGENTA = "\033[35m"
         GREEN = "\033[32m"
 
         # Helper function to strip ANSI escape sequences.
@@ -228,20 +242,51 @@ class Table:
         )  # create the table file if it does not exist
         self.setup(attributes)
 
+    def setup_attributes(self, attributes: dict[str, dict]):
+        for attr_name, attr in attributes.items():
+            self.attributes[attr_name] = TableAttribute(
+                name=attr_name,
+                dtype=attr["dtype"],
+                max_size=attr["max_size"],
+                min_size=attr["min_size"],
+                default=attr["default"],
+                constraint=attr["constraint"],
+            )
+
     def setup(self, attributes: list):
         for attr in attributes:
-            attr_name, *props = attr
-            self.attributes[attr_name] = TableAttribute(*attr)
+            print("setup attr:", attr)
+            attr_name, dtype, max, min, default, constraint = attr
+            self.attributes[attr_name] = TableAttribute(
+                name=attr_name,
+                dtype=dtype,
+                max_size=max,
+                min_size=min,
+                default=default,
+                constraint=constraint,
+            )
 
         self.file = open(self.filepath, "r")  # read the file
 
     def add_attributes(self, *attributes):
         new_attrs = []
         for attr in attributes:
-            attr_name, *props = attr
-
+            attr_name, dtype, max, min, default, constraint = attr
+            # print(
+            #     f"attr:{attr_name}, dtype:{dtype}, max:{max}, min:{min}, default:{default}, constraint:{constraint}"
+            # )
             if attr_name in self.attributes.keys():
                 raise TableAttributeExistsException("Attribute exists !!")
+
+            if max < min:
+                raise Exception("min should always be less than max")
+
+            if type(default).__name__ != dtype:
+                print(type(default).__name__, dtype)
+                raise Exception("The default value has invalid data type")
+
+            if not isinstance(constraint, str):
+                raise Exception("Invalid constraint")
 
             tbl_attr = TableAttribute(*attr)
             if tbl_attr.default is None:
@@ -249,10 +294,11 @@ class Table:
 
             new_attrs.append(tbl_attr)
 
-        old_records = self.select(pr=False)
+        old_records = self.select(pr=False) if self.attributes != {} else []
         for new_attr in new_attrs:
             self.attributes[new_attr.name] = new_attr
 
+        print("new:", list(map(lambda e: e.name, new_attrs)))
         migrated_records = []
         for record in old_records:
             new_record = dict(record)
@@ -318,7 +364,17 @@ class Table:
         if attr_name not in self.attributes.keys():
             raise TableAttributeNotFoundException(f"No attribute {attr_name} !!")
 
-        new_name, *props = new_attr
+        new_name, dtype, max, min, default, constraint = new_attr
+        if max < min:
+            raise Exception("min should always be less than max")
+
+        if type(default).__name__ != dtype:
+            print(type(default).__name__, dtype)
+            raise Exception("The default value has invalid data type")
+
+        if not isinstance(constraint, str):
+            raise Exception("Invalid constraint")
+
         # same attribute
         if new_name == attr_name:
             self.attributes[attr_name] = TableAttribute(*new_attr)
@@ -336,7 +392,6 @@ class Table:
         Writing record following the structure of the table in order
         """
         record_bytes = b""
-        print("4 in d: ", 4 in {1: "one", "4": "four"})
         for attr in self.attributes.keys():
             if attr not in kwargs:
                 default_value = self.attributes[attr].default
@@ -350,6 +405,11 @@ class Table:
 
             dtype = self.attributes[attr].dtype
             value = kwargs[attr]
+
+            # the value does not follow the constraint
+            if not match_constraint(value, self.attributes[attr]):
+                raise Exception("Constraints unmatched")
+
             packed = bytes()
 
             match dtype:
@@ -375,11 +435,10 @@ class Table:
 
     def match_attribute_conditions(self, attr, value, all_match=False, **where):
         # Handling the where clause
-        if attr in where.keys():
+        if attr in where.keys():  # if the attribute is conditionned
             conditions = where[attr]
             condition_verified = True
             if isinstance(conditions, (tuple, list)):  # AND(tuple) , OR(list)
-                print("All_match waited ? ")
                 condition_verified = verify_conditions(
                     value,
                     list(conditions),
@@ -411,10 +470,17 @@ class Table:
         self, pr=True, all_match=True, **where
     ):  # all_match is used for checking if it's an OR or an AND expression and pr if we should print
         records = []
+        if self.attributes == {}:
+            self.print_records(records)
+            print("Table still unstructured")
+            return records
+        elif any(attr not in self.attributes.keys() for attr in where.keys()):
+            raise Exception("Unexpected attribute")
+
         with open(self.filepath, "rb") as tablefile:
-            match_conditions = []
             while True:
                 record = {}
+                match_conditions = []
                 for attr in self.attributes.keys():
                     dtype_code_bytes = tablefile.read(1)
                     value = ""
@@ -430,6 +496,7 @@ class Table:
                             )
                         return records
 
+                    # Get the value using struct
                     dtype_code = struct.unpack("<B", dtype_code_bytes)[0]
                     match dtype_code:
                         case 1:  # int

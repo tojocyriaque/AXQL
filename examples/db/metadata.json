@@ -1,0 +1,1 @@
+{"users": {"id": {"dtype": "int", "min_size": 1, "max_size": 200, "default": 1, "constraint": "not null"}, "names": {"dtype": "str", "min_size": 1, "max_size": 20, "default": "name", "constraint": "not null"}, "addr": {"dtype": "str", "min_size": 3, "max_size": 100, "default": "home", "constraint": "not null"}}}
